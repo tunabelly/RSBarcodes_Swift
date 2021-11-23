@@ -6,7 +6,13 @@
 //  Copyright (c) 2014 P.D.Q. All rights reserved.
 //
 
-import UIKit
+import CoreGraphics
+
+#if os(macOS)
+public typealias RSColor = NSColor
+#else
+public typealias RSColor = UIColor
+#endif
 
 /**
  MissingHashMarkAsPrefix:   "Invalid RGB string, missing '#' as prefix"
@@ -19,7 +25,7 @@ public enum UIColorInputError : Error {
     mismatchedHexStringLength
 }
 
-extension UIColor {
+extension RSColor {
     /**
      The shorthand three-digit hexadecimal representation of color.
      #RGB defines to the color #RRGGBB.
@@ -114,8 +120,8 @@ extension UIColor {
      
      - parameter rgba: String value.
      */
-    @objc public convenience init(_ rgba: String, defaultColor: UIColor = UIColor.clear) {
-        guard let color = try? UIColor(rgba_throws: rgba) else {
+    @objc public convenience init?(_ rgba: String, defaultColor: RSColor = RSColor.clear) {
+        guard let color = try? RSColor(rgba_throws: rgba) else {
             self.init(cgColor: defaultColor.cgColor)
             return
         }

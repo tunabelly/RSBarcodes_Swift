@@ -7,7 +7,7 @@
 //
 
 import AVFoundation
-import UIKit
+import CoreGraphics
 
 @available(macCatalyst 14.0, *)
 @available(iOSApplicationExtension, unavailable)

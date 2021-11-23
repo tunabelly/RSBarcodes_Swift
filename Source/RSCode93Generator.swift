@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 P.D.Q. All rights reserved.
 //
 
-import UIKit
+import CoreGraphics
 
 // http://www.barcodeisland.com/code93.phtml
 @available(macCatalyst 14.0, *)

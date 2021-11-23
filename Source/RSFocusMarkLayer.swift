@@ -2,12 +2,18 @@
 //  RSFocusMarkLayer.swift
 //  RSBarcodesSample
 //
-//  Created by R0CKSTAR on 6/13/14.
+//  Created by R0CKS/Users/maustin/GitHub/RSBarcodes_Swift/Source/RSFocusMarkLayer.swift:25:42: Missing argument label 'rgba_throws:' in callTAR on 6/13/14.
 //  Copyright (c) 2014 P.D.Q. All rights reserved.
 //
 
-import UIKit
+import CoreGraphics
 import QuartzCore
+
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 open class RSFocusMarkLayer: CALayer {
     // Use camera.app's focus mark size as default
@@ -15,7 +21,7 @@ open class RSFocusMarkLayer: CALayer {
     // Use camera.app's focus mark sight as default
     @objc open var sight: CGFloat = 6
     // Use camera.app's focus mark color as default
-    @objc open var strokeColor = UIColor("#ffcc00").cgColor
+    @objc open var strokeColor = try! RSColor(rgba_throws: "#ffcc00").cgColor
     @objc open var strokeWidth: CGFloat = 1
     @objc open var delay: CFTimeInterval = 1
     @objc open var canDraw = false
@@ -44,7 +50,7 @@ open class RSFocusMarkLayer: CALayer {
         
         ctx.setShouldAntialias(true)
         ctx.setAllowsAntialiasing(true)
-        ctx.setFillColor(UIColor.clear.cgColor)
+        ctx.setFillColor(CGColor.clear)
         ctx.setStrokeColor(self.strokeColor)
         ctx.setLineWidth(self.strokeWidth)
         

@@ -6,11 +6,11 @@
 //  Copyright (c) 2014 P.D.Q. All rights reserved.
 //
 
-import UIKit
+import CoreGraphics
 import QuartzCore
 
 open class RSCornersLayer: CALayer {
-    @objc open var strokeColor = UIColor.green.cgColor
+    @objc open var strokeColor = CGColor(red: 0, green: 1, blue: 0, alpha: 1)
     @objc open var strokeWidth: CGFloat = 2
     @objc open var drawingCornersArray: Array<Array<CGPoint>> = []
     @objc open var cornersArray: Array<[Any]> = [] {
@@ -30,7 +30,7 @@ open class RSCornersLayer: CALayer {
         
         ctx.setShouldAntialias(true)
         ctx.setAllowsAntialiasing(true)
-        ctx.setFillColor(UIColor.clear.cgColor)
+        ctx.setFillColor(CGColor.clear)
         ctx.setStrokeColor(self.strokeColor)
         ctx.setLineWidth(self.strokeWidth)
         

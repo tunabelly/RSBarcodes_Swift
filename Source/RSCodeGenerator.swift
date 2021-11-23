@@ -7,9 +7,15 @@
 //
 
 import Foundation
-import UIKit
+import CoreGraphics
 import AVFoundation
 import CoreImage
+
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 let DIGITS_STRING = "0123456789"
 let BARCODE_DEFAULT_HEIGHT = 28
@@ -27,25 +33,25 @@ public enum InputCorrectionLevel: String {
 @available(macCatalyst 14.0, *)
 public protocol RSCodeGenerator {
     /** The fill (background) color of the generated barcode. */
-    var fillColor: UIColor {get set}
+    var fillColor: CGColor {get set}
     
     /** The stroke color of the generated barcode. */
-    var strokeColor: UIColor {get set}
+    var strokeColor: CGColor {get set}
     
     /** Check whether the given contents are valid. */
     func isValid(_ contents:String) -> Bool
     
     /** Generate code image using the given machine readable code object and correction level. */
-    func generateCode(_ machineReadableCodeObject:AVMetadataMachineReadableCodeObject, inputCorrectionLevel:InputCorrectionLevel, targetSize: CGSize?) -> UIImage?
+    func generateCode(_ machineReadableCodeObject:AVMetadataMachineReadableCodeObject, inputCorrectionLevel:InputCorrectionLevel, targetSize: CGSize?) -> CGImage?
     
     /** Generate code image using the given machine readable code object. */
-    func generateCode(_ machineReadableCodeObject:AVMetadataMachineReadableCodeObject, targetSize: CGSize?) -> UIImage?
+    func generateCode(_ machineReadableCodeObject:AVMetadataMachineReadableCodeObject, targetSize: CGSize?) -> CGImage?
     
     /** Generate code image using the given machine readable code object type, contents and correction level. */
-    func generateCode(_ contents:String, inputCorrectionLevel:InputCorrectionLevel, machineReadableCodeObjectType:String, targetSize: CGSize?) -> UIImage?
+    func generateCode(_ contents:String, inputCorrectionLevel:InputCorrectionLevel, machineReadableCodeObjectType:String, targetSize: CGSize?) -> CGImage?
     
     /** Generate code image using the given machine readable code object type and contents. */
-    func generateCode(_ contents:String, machineReadableCodeObjectType:String, targetSize: CGSize?) -> UIImage?
+    func generateCode(_ contents:String, machineReadableCodeObjectType:String, targetSize: CGSize?) -> CGImage?
 }
 
 // Check digit are not required for all code generators.
@@ -59,8 +65,8 @@ public protocol RSCheckDigitGenerator {
 @available(macCatalyst 14.0, *)
 open class RSAbstractCodeGenerator : RSCodeGenerator {
     
-    open var fillColor: UIColor = UIColor.white
-    open var strokeColor: UIColor = UIColor.black
+    open var fillColor: CGColor = CGColor.white
+    open var strokeColor: CGColor = CGColor.black
     
     // Check whether the given contents are valid.
     open func isValid(_ contents:String) -> Bool {
@@ -97,7 +103,7 @@ open class RSAbstractCodeGenerator : RSCodeGenerator {
     }
     
     // Drawer for completed barcode.
-    func drawCompleteBarcode(_ completeBarcode:String, targetSize: CGSize? = nil) -> UIImage? {
+    func drawCompleteBarcode(_ completeBarcode:String, targetSize: CGSize? = nil) -> CGImage? {
         let length:Int = completeBarcode.length()
         if length <= 0 {
             return nil
@@ -114,55 +120,58 @@ open class RSAbstractCodeGenerator : RSCodeGenerator {
             height = Int(targetSize.height / targetSize.width * CGFloat(width))
         }
         let size = CGSize(width: CGFloat(width), height: CGFloat(height))
-        UIGraphicsBeginImageContextWithOptions(size, false, 1)
-        if let context = UIGraphicsGetCurrentContext() {
-            context.setShouldAntialias(false)
-            
-            self.fillColor.setFill()
-            self.strokeColor.setStroke()
-            
-            context.fill(CGRect(x: 0, y: 0, width: size.width, height: size.height))
-            context.setLineWidth(1)
-            
-            for i in 0..<length {
-                if completeBarcode[i] == "1" {
-                    let x = i + (2 + 1)
-                    context.move(to: CGPoint(x: CGFloat(x), y: 1.5))
-                    context.addLine(to: CGPoint(x: CGFloat(x), y: size.height - 2))
-                }
+        
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: colorSpace, bitmapInfo: bitmapInfo) else { return nil }
+        
+        context.setShouldAntialias(false)
+        context.setFillColor(fillColor)
+        context.setStrokeColor(strokeColor)
+        
+        context.fill(CGRect(x: 0, y: 0, width: size.width, height: size.height))
+        context.setLineWidth(1)
+        
+        for i in 0..<length {
+            if completeBarcode[i] == "1" {
+                let x = i + (2 + 1)
+                context.move(to: CGPoint(x: CGFloat(x), y: 1.5))
+                context.addLine(to: CGPoint(x: CGFloat(x), y: size.height - 2))
             }
-            context.drawPath(using: CGPathDrawingMode.fillStroke)
-            let barcode = UIGraphicsGetImageFromCurrentImageContext()
-            UIGraphicsEndImageContext()
-            
-            if let targetSize = targetSize, let barcode = barcode {
-                return RSAbstractCodeGenerator.resizeImage(barcode, targetSize: targetSize, contentMode: UIView.ContentMode.bottomRight)
+        }
+        context.drawPath(using: CGPathDrawingMode.fillStroke)
+        
+        if let barcode = context.makeImage() {
+            if let targetSize = targetSize {
+                let scale: CGFloat = targetSize.width / CGFloat(barcode.width)
+                return RSAbstractCodeGenerator.resizeImage(barcode, scale: scale)
             }
             
             return barcode
-        } else {
+        }
+        else {
             return nil
         }
     }
     
     // RSCodeGenerator
     
-    open func generateCode(_ machineReadableCodeObject:AVMetadataMachineReadableCodeObject, inputCorrectionLevel: InputCorrectionLevel, targetSize: CGSize? = nil) -> UIImage? {
+    open func generateCode(_ machineReadableCodeObject:AVMetadataMachineReadableCodeObject, inputCorrectionLevel: InputCorrectionLevel, targetSize: CGSize? = nil) -> CGImage? {
         return self.generateCode(machineReadableCodeObject.stringValue!, inputCorrectionLevel: inputCorrectionLevel, machineReadableCodeObjectType: machineReadableCodeObject.type.rawValue, targetSize: targetSize)
     }
     
-    open func generateCode(_ machineReadableCodeObject:AVMetadataMachineReadableCodeObject, targetSize: CGSize? = nil) -> UIImage? {
+    open func generateCode(_ machineReadableCodeObject:AVMetadataMachineReadableCodeObject, targetSize: CGSize? = nil) -> CGImage? {
         return self.generateCode(machineReadableCodeObject, inputCorrectionLevel: .Medium, targetSize: targetSize)
     }
     
-    open func generateCode(_ contents:String, inputCorrectionLevel:InputCorrectionLevel, machineReadableCodeObjectType:String, targetSize: CGSize? = nil) -> UIImage? {
+    open func generateCode(_ contents:String, inputCorrectionLevel:InputCorrectionLevel, machineReadableCodeObjectType:String, targetSize: CGSize? = nil) -> CGImage? {
         if self.isValid(contents) {
             return self.drawCompleteBarcode(self.completeBarcode(self.barcode(contents)), targetSize: targetSize)
         }
         return nil
     }
     
-    open func generateCode(_ contents:String, machineReadableCodeObjectType:String, targetSize: CGSize? = nil) -> UIImage? {
+    open func generateCode(_ contents:String, machineReadableCodeObjectType:String, targetSize: CGSize? = nil) -> CGImage? {
         return self.generateCode(contents, inputCorrectionLevel: .Medium, machineReadableCodeObjectType: machineReadableCodeObjectType, targetSize: targetSize)
     }
     
@@ -184,7 +193,7 @@ open class RSAbstractCodeGenerator : RSCodeGenerator {
     }
     
     // Generate CI related code image
-    open class func generateCode(_ contents:String, inputCorrectionLevel: InputCorrectionLevel, filterName:String, targetSize: CGSize? = nil, fillColor: UIColor = .white, strokeColor: UIColor = .black) -> UIImage? {
+    open class func generateCode(_ contents:String, inputCorrectionLevel: InputCorrectionLevel, filterName:String, targetSize: CGSize? = nil, fillColor: CGColor = .white, strokeColor: CGColor = .black) -> CGImage? {
         
         if filterName.length() > 0 {
             if let filter = CIFilter(name: filterName) {
@@ -201,7 +210,16 @@ open class RSAbstractCodeGenerator : RSCodeGenerator {
 
                 if let outputImage = outputImage?.transformed(by: transform) {
                     if let cgImage = ContextMaker.make().createCGImage(outputImage, from: outputImage.extent) {
-                        return UIImage(cgImage: cgImage, scale: UIScreen.main.scale, orientation: .up)
+                        return cgImage
+                        
+//                        var screenScale: CGFloat = 1
+//                        #if os(macOS)
+//                        screenScale = NSScreen.mainScreen.backingScaleFactor
+//                        #else
+//                        screenScale = UIScreen.main.scale
+//                        #endif
+//
+//                        return CGImage(cgImage: cgImage, scale: screenScale, orientation: .up)
                     }
                 }
             }
@@ -209,15 +227,15 @@ open class RSAbstractCodeGenerator : RSCodeGenerator {
         return nil
     }
     
-    open class func generateCode(_ contents:String, filterName:String, targetSize: CGSize? = nil, fillColor: UIColor = .white, strokeColor: UIColor = .black) -> UIImage? {
+    open class func generateCode(_ contents:String, filterName:String, targetSize: CGSize? = nil, fillColor: CGColor = .white, strokeColor: CGColor = .black) -> CGImage? {
         return self.generateCode(contents, inputCorrectionLevel: .Medium, filterName: filterName, targetSize: targetSize, fillColor: fillColor, strokeColor: strokeColor)
     }
     
-    fileprivate static func colorizeImage(_ outputImage: CIImage?, _ fillColor: UIColor, _ strokeColor: UIColor) -> CIImage? {
+    fileprivate static func colorizeImage(_ outputImage: CIImage?, _ fillColor: CGColor, _ strokeColor: CGColor) -> CIImage? {
         if let colorFilter = CIFilter(name: "CIFalseColor") {
             colorFilter.setValue(outputImage, forKey: "inputImage")
-            let ciFillColor = CIColor(cgColor: fillColor.cgColor)
-            let ciStrokeColor = CIColor(cgColor: strokeColor.cgColor)
+            let ciFillColor = CIColor(cgColor: fillColor)
+            let ciStrokeColor = CIColor(cgColor: strokeColor)
             colorFilter.setValue(ciFillColor, forKey: "inputColor1")
             colorFilter.setValue(ciStrokeColor, forKey: "inputColor0")
             return colorFilter.outputImage
@@ -236,20 +254,25 @@ open class RSAbstractCodeGenerator : RSCodeGenerator {
     }
 
     // Resize image
-    open class func resizeImage(_ source:UIImage, scale:CGFloat) -> UIImage? {
-        let width = source.size.width * scale
-        let height = source.size.height * scale
+    open class func resizeImage(_ source:CGImage, scale:CGFloat) -> CGImage? {
         
-        UIGraphicsBeginImageContextWithOptions(CGSize(width: width, height: height), false, 0)
-        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+        let width = Int(CGFloat(source.width) * scale)
+        let height = Int(CGFloat(source.height) * scale)
+        
+        // get the optionals that are necessary for the resizing to work
+        guard let colorSpace = source.colorSpace else { return nil }
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: source.bitsPerComponent, bytesPerRow: source.bytesPerRow, space: colorSpace, bitmapInfo: source.alphaInfo.rawValue) else { return nil }
+                
+        // draw image into context (which will resize it)
         context.interpolationQuality = .none
-        source.draw(in: CGRect(x: 0, y: 0, width: width, height: height))
-        let target = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        return target
+        context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+        
+        // convert back into an image
+        return context.makeImage()
     }
     
-    open class func resizeImage(_ source:UIImage, targetSize:CGSize, contentMode:UIView.ContentMode, scale:CGFloat? = nil) -> UIImage? {
+    #if os(iOS)
+    open class func resizeImage(_ source:CGImage, targetSize:CGSize, contentMode:UIView.ContentMode, scale:CGFloat? = nil) -> CGImage? {
         var x: CGFloat = 0
         var y: CGFloat = 0
         var width = targetSize.width
@@ -308,4 +331,5 @@ open class RSAbstractCodeGenerator : RSCodeGenerator {
         UIGraphicsEndImageContext()
         return target
     }
+    #endif
 }

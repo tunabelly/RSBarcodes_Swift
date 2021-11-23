@@ -7,15 +7,15 @@
 //
 
 import Foundation
-import UIKit
+import CoreGraphics
 import AVFoundation
 
 @available(macCatalyst 14.0, *)
 open class RSUnifiedCodeGenerator: RSCodeGenerator {
     
     open var isBuiltInCode128GeneratorSelected = false
-    open var fillColor: UIColor = UIColor.white
-    open var strokeColor: UIColor = UIColor.black
+    open var fillColor: CGColor = CGColor.white
+    open var strokeColor: CGColor = CGColor.black
     
     open class var shared: RSUnifiedCodeGenerator {
         return UnifiedCodeGeneratorSharedInstance
@@ -28,7 +28,7 @@ open class RSUnifiedCodeGenerator: RSCodeGenerator {
         return false
     }
     
-    open func generateCode(_ contents: String, inputCorrectionLevel: InputCorrectionLevel, machineReadableCodeObjectType: String, targetSize: CGSize? = nil) -> UIImage? {
+    open func generateCode(_ contents: String, inputCorrectionLevel: InputCorrectionLevel, machineReadableCodeObjectType: String, targetSize: CGSize? = nil) -> CGImage? {
         var codeGenerator: RSCodeGenerator?
         switch machineReadableCodeObjectType {
         case AVMetadataObject.ObjectType.qr.rawValue, AVMetadataObject.ObjectType.pdf417.rawValue, AVMetadataObject.ObjectType.aztec.rawValue:
@@ -77,15 +77,15 @@ open class RSUnifiedCodeGenerator: RSCodeGenerator {
         }
     }
     
-    open func generateCode(_ contents: String, machineReadableCodeObjectType: String, targetSize: CGSize? = nil) -> UIImage? {
+    open func generateCode(_ contents: String, machineReadableCodeObjectType: String, targetSize: CGSize? = nil) -> CGImage? {
         return self.generateCode(contents, inputCorrectionLevel: .Medium, machineReadableCodeObjectType: machineReadableCodeObjectType, targetSize: targetSize)
     }
     
-    open func generateCode(_ machineReadableCodeObject: AVMetadataMachineReadableCodeObject, inputCorrectionLevel: InputCorrectionLevel, targetSize: CGSize? = nil) -> UIImage? {
+    open func generateCode(_ machineReadableCodeObject: AVMetadataMachineReadableCodeObject, inputCorrectionLevel: InputCorrectionLevel, targetSize: CGSize? = nil) -> CGImage? {
         return self.generateCode(machineReadableCodeObject.stringValue!, inputCorrectionLevel: inputCorrectionLevel, machineReadableCodeObjectType: machineReadableCodeObject.type.rawValue, targetSize: targetSize)
     }
     
-    open func generateCode(_ machineReadableCodeObject: AVMetadataMachineReadableCodeObject, targetSize: CGSize? = nil) -> UIImage? {
+    open func generateCode(_ machineReadableCodeObject: AVMetadataMachineReadableCodeObject, targetSize: CGSize? = nil) -> CGImage? {
         return self.generateCode(machineReadableCodeObject, inputCorrectionLevel: .Medium, targetSize: targetSize)
     }
 }
